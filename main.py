@@ -38,3 +38,7 @@ async def get_news():
     except Exception as e:
         print("❌ Error fetching news:", e)
         return {"status": "error", "message": "Failed to fetch"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
