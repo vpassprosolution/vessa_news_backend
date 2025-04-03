@@ -22,7 +22,12 @@ async def get_news():
 
     try:
         cur = conn.cursor()
-        cur.execute("SELECT event_time, currency, event_name FROM high_impact_news WHERE date = CURRENT_DATE ORDER BY event_time")
+        cur.execute("""
+            SELECT event_time, currency, event_name 
+            FROM high_impact_news 
+            WHERE date = CURRENT_DATE 
+            ORDER BY event_time
+        """)
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -33,9 +38,3 @@ async def get_news():
     except Exception as e:
         print("❌ Error fetching news:", e)
         return {"status": "error", "message": "Failed to fetch"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
