@@ -1,76 +1,82 @@
-import requests
+import httpx
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import connect_db
 
 URL = "https://www.investing.com/economic-calendar/"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "en-US,en;q=0.9"
 }
 
 def scrape_high_impact_news():
-    today = datetime.today().strftime("%b %d, %Y")
-    print(f"📅 Scraping news for {today}")
+    malaysia_now = datetime.utcnow() + timedelta(hours=8)
+    malaysia_date = malaysia_now.date()
+    print(f"📅 Scraping high-impact news for: {malaysia_now.strftime('%A, %b %d (%Y)')} (MYT)")
 
     try:
-        response = requests.get(URL, headers=HEADERS)
-        soup = BeautifulSoup(response.content, "html.parser")
+        response = httpx.get(URL, headers=HEADERS, timeout=30)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
 
         rows = soup.select("tr.js-event-item")
-
         news_items = []
 
         for row in rows:
-            importance = row.get("data-importance", "")
-            date_attr = row.get("data-event-datetime", "")
+            bulls = row.select(".grayFullBullishIcon")
+            if len(bulls) < 3:
+                continue  # Only high impact
 
-            if importance != "3":
-                continue  # Only high-impact
+            time = row.select_one(".time")
+            currency = row.select_one(".flagCur")
+            event = row.select_one(".event")
 
-            if not date_attr:
+            if not (time and currency and event):
                 continue
 
-            event_date = datetime.utcfromtimestamp(int(date_attr)).date()
-            if event_date != datetime.today().date():
-                continue  # Skip old/future dates
-
-            time = row.select_one(".first.left.time") or row.select_one(".first.left.noTime")
-            currency = row.select_one(".left.flagCur.noWrap span")
-            event_name = row.select_one(".event")
-
-            if time and currency and event_name:
-                news_items.append({
-                    "event_time": time.text.strip(),
-                    "currency": currency.text.strip(),
-                    "event_name": event_name.text.strip(),
-                    "importance": "High"
-                })
+            news_items.append({
+                "event_time": time.get_text(strip=True),
+                "currency": currency.get_text(strip=True),
+                "event_name": event.get_text(strip=True),
+                "importance": "High",
+                "date": malaysia_date
+            })
 
         print(f"✅ Found {len(news_items)} high-impact news.")
 
-        if news_items:
-            conn = connect_db()
-            cur = conn.cursor()
+        if not news_items:
+            print("❌ No high-impact news found.")
+            return
 
-            # 🧹 Delete previous records
-            cur.execute("DELETE FROM high_impact_news WHERE date = CURRENT_DATE")
+        # ✅ Save to DB
+        conn = connect_db()
+        cur = conn.cursor()
 
-            for item in news_items:
-                cur.execute("""
-                    INSERT INTO high_impact_news (event_time, currency, event_name, importance)
-                    VALUES (%s, %s, %s, %s)
-                """, (item["event_time"], item["currency"], item["event_name"], item["importance"]))
+        # ✅ DELETE based on MYT DATE, not UTC
+        cur.execute("DELETE FROM high_impact_news WHERE date = %s", (malaysia_date,))
 
-            conn.commit()
-            cur.close()
-            conn.close()
+        for item in news_items:
+            cur.execute("""
+                INSERT INTO high_impact_news (event_time, currency, event_name, importance, date)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                item["event_time"],
+                item["currency"],
+                item["event_name"],
+                item["importance"],
+                item["date"]
+            ))
 
-            print("✅ Data saved to database.")
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("✅ Data saved to database.")
 
     except Exception as e:
-        print("❌ Error during scraping:", e)
+        print("❌ Error scraping:", e)
 
 if __name__ == "__main__":
     scrape_high_impact_news()
