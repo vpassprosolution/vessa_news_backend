@@ -5,10 +5,10 @@ from datetime import date
 
 app = FastAPI()
 
-# ✅ Allow frontend (GitHub Pages) to access this
+# ✅ Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can restrict to your GitHub Pages domain
+    allow_origins=["*"],  # You can limit this later to GitHub Pages domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +33,7 @@ async def get_news():
     except Exception as e:
         print("❌ Error fetching news:", e)
         return {"status": "error", "message": "Failed to fetch"}
+
 
 if __name__ == "__main__":
     import uvicorn
