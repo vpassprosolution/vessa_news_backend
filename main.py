@@ -5,10 +5,10 @@ from datetime import date
 
 app = FastAPI()
 
-# ✅ Allow frontend access
+# ✅ CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can limit this later to GitHub Pages domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
