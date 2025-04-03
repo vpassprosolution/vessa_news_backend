@@ -1,7 +1,6 @@
 fastapi
 uvicorn
-psycopg2-binary
-beautifulsoup4
 httpx
-playwright
-pytz
+beautifulsoup4
+psycopg2
+
