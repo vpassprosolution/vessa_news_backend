@@ -1,8 +1,9 @@
 import psycopg2
+import os
 from datetime import datetime, timedelta
 
-# ✅ Replace with your actual Railway DB URL
-DB_URL = "postgresql://postgres:vVMyqWjrqgVhEnwyFifTQxkDtPjQutGb@interchange.proxy.rlwy.net:30451/railway"
+# ✅ Securely get DB URL from Railway variable
+DB_URL = os.environ.get("DB_URL")
 
 def connect_db():
     try:
@@ -20,8 +21,10 @@ def save_news_to_db(news_list):
     try:
         cur = conn.cursor()
 
-        # ✅ Use Malaysia date to delete correctly
+        # ✅ Use Malaysia date (UTC+8)
         malaysia_date = (datetime.utcnow() + timedelta(hours=8)).date()
+
+        # ✅ Delete today's old data before inserting new one
         cur.execute("DELETE FROM high_impact_news WHERE date = %s", (malaysia_date,))
 
         for news in news_list:

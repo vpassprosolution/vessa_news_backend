@@ -53,9 +53,13 @@ def scrape_high_impact_news():
 
         # ✅ Save to DB
         conn = connect_db()
+        if not conn:
+            print("❌ DB connection failed.")
+            return
+
         cur = conn.cursor()
 
-        # ✅ DELETE based on MYT DATE, not UTC
+        # ✅ Delete today's existing news
         cur.execute("DELETE FROM high_impact_news WHERE date = %s", (malaysia_date,))
 
         for item in news_items:
